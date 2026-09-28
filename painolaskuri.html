@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="fi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<title>Painolaskuri</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f3f4f6;color:#111827}
+main{max-width:520px;margin:auto;padding:20px 16px 40px}
+h1{font-size:28px;margin:8px 0 20px}.card{background:#fff;border:1px solid #ddd;border-radius:18px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:14px;font-weight:600;margin-bottom:8px}
+input{width:100%;font-size:20px;padding:13px 14px;border:1px solid #ccc;border-radius:12px}
+.result{background:#e5e7eb;border-radius:18px;padding:18px;text-align:center;margin:14px 0}
+.result small{display:block;color:#555}.result strong{display:block;font-size:38px;margin-top:4px}
+button{width:100%;padding:14px;border:0;border-radius:12px;font-size:17px;font-weight:700;background:#111827;color:white;margin-bottom:14px}
+button:disabled{opacity:.4}.secondary{background:white;color:#111827;border:1px solid #ccc}
+.row{display:flex;justify-content:space-between;padding:12px;border:1px solid #e5e7eb;border-radius:12px;margin:7px 0;background:#fafafa}
+.muted{color:#6b7280;font-size:14px}.total{display:flex;justify-content:space-between;border-top:1px solid #ddd;margin-top:14px;padding-top:14px;font-weight:700}
+.empty{color:#777;font-size:14px}.error{color:#b91c1c;font-size:14px}
+</style>
+</head>
+<body>
+<main>
+<h1>⚖️ Painolaskuri</h1>
+
+<div class="card">
+<label for="net">Nettopaino (kg)</label>
+<input id="net" type="number" inputmode="decimal" min="0" step="1" placeholder="Esim. 12500">
+</div>
+
+<div class="card">
+<label for="gross">Bruttopaino (kg)</label>
+<input id="gross" type="number" inputmode="decimal" min="0" step="1" placeholder="Syötä bruttopaino">
+</div>
+
+<div class="result">
+<small>Tavaran määrä</small>
+<strong id="result">— kg</strong>
+<div id="message" class="muted" aria-live="polite"></div>
+</div>
+
+<button id="add" disabled>Lisää punnitus listaan</button>
+
+<div class="card">
+<div style="display:flex;justify-content:space-between;align-items:center">
+<strong id="today">Tänään</strong><span id="count" class="muted">0 kpl</span>
+</div>
+<div id="list" style="margin-top:10px"></div>
+<div class="total"><span>Päivän yhteensä</span><span id="total">0 kg</span></div>
+</div>
+
+<div class="card">
+<strong>Aiemmat päivät</strong>
+<div id="days" style="margin-top:10px"></div>
+</div>
+
+<button id="clear" class="secondary">Tyhjennä tämän päivän punnitukset</button>
+</main>
+
+<script>
+const KEY="painolaskuri_data_v1";
+const $=id=>document.getElementById(id);
+let data={};
+try{data=JSON.parse(localStorage.getItem(KEY)||"{}")||{}}catch(e){data={}}
+const dateKey=()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`};
+const fmt=n=>Number(n).toLocaleString("fi-FI")+" kg";
+const dateLabel=k=>{const [y,m,d]=k.split("-");return new Date(+y,+m-1,+d).toLocaleDateString("fi-FI",{weekday:"long",day:"numeric",month:"numeric",year:"numeric"})};
+function save(){try{localStorage.setItem(KEY,JSON.stringify(data))}catch(e){}}
+function calc(){
+ const n=Number($("net").value),g=Number($("gross").value);
+ $("add").disabled=true;
+ if($("net").value===""||$("gross").value===""){ $("result").textContent="— kg";$("message").textContent="";return}
+ if(!Number.isFinite(n)||!Number.isFinite(g)||n<0||g<0){$("result").textContent="— kg";$("message").textContent="Syötä kelvolliset painot.";return}
+ if(g<n){$("result").textContent="— kg";$("message").textContent="Bruttopaino ei voi olla nettopainoa pienempi.";return}
+ $("result").textContent=fmt(g-n);$("message").textContent="Bruttopaino − nettopaino";$("add").disabled=false;
+}
+function render(){
+ const k=dateKey(),items=Array.isArray(data[k])?data[k]:[];
+ $("today").textContent="Tänään · "+dateLabel(k);$("count").textContent=items.length+" kpl";
+ $("list").innerHTML=items.length?items.map((x,i)=>`<div class="row"><span class="muted">#${i+1}</span><strong>${fmt(x)}</strong></div>`).join(""):'<div class="empty">Ei vielä punnituksia tänään.</div>';
+ $("total").textContent=fmt(items.reduce((a,b)=>a+b,0));
+ const keys=Object.keys(data).filter(x=>x!==k).sort().reverse();
+ $("days").innerHTML=keys.length?keys.map(x=>{const a=data[x]||[],s=a.reduce((p,v)=>p+v,0);return `<div class="row"><div><strong>${dateLabel(x)}</strong><div class="muted">${a.length} punnitusta</div></div><strong>${fmt(s)}</strong></div>`}).join(""):'<div class="empty">Ei aikaisempia päiviä.</div>';
+}
+$("net").addEventListener("input",calc);$("gross").addEventListener("input",calc);
+$("add").addEventListener("click",()=>{
+ const a=Number($("gross").value)-Number($("net").value),k=dateKey();
+ if(!Number.isFinite(a)||a<0)return;
+ if(!Array.isArray(data[k]))data[k]=[];data[k].push(a);save();render();
+ $("gross").value="";$("result").textContent="— kg";$("message").textContent="Punnitus lisätty."; $("add").disabled=true;$("gross").focus();
+});
+$("clear").addEventListener("click",()=>{const k=dateKey();delete data[k];save();render();$("gross").value="";calc()});
+render();
+</script>
+</body>
+</html>
