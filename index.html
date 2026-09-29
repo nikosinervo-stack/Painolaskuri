@@ -208,11 +208,49 @@ function render(){
 
  $("days").innerHTML=keys.length?
  keys.map(x=>{
-  const a=data[x]||[];
+  const a=Array.isArray(data[x])?data[x]:[];
   const s=a.reduce((p,v)=>p+v,0);
-  return `<div class="row"><div><strong>${dateLabel(x)}</strong><div class="muted">${a.length} punnitusta</div></div><strong>${fmt(s)}</strong></div>`
+
+  return `
+  <div class="row" style="display:block;cursor:pointer" onclick="toggleDay('${x}')">
+    <div style="display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <strong>▶ ${dateLabel(x)}</strong>
+        <div class="muted">${a.length} punnitusta</div>
+      </div>
+      <strong>${fmt(s)}</strong>
+    </div>
+    <div id="day-${x}" style="display:none;margin-top:10px;border-top:1px solid #d4e2d4;padding-top:8px">
+      ${a.map((v,i)=>`
+        <div style="display:flex;justify-content:space-between;padding:7px 2px">
+          <span class="muted">#${i+1}</span>
+          <strong>${fmt(v)}</strong>
+        </div>
+      `).join("")}
+      <div style="border-top:1px solid #d4e2d4;margin-top:6px;padding-top:8px;display:flex;justify-content:space-between">
+        <strong>Yhteensä</strong>
+        <strong>${fmt(s)}</strong>
+      </div>
+    </div>
+  </div>`;
  }).join("")
  :'<div class="empty">Ei aikaisempia päiviä.</div>';
+}
+
+function toggleDay(day){
+ const el=document.getElementById("day-"+day);
+ if(!el)return;
+
+ const row=el.parentElement;
+ const title=row.querySelector("strong");
+
+ if(el.style.display==="none"){
+  el.style.display="block";
+  title.textContent=title.textContent.replace("▶","▼");
+ }else{
+  el.style.display="none";
+  title.textContent=title.textContent.replace("▼","▶");
+ }
 }
 
 $("net").addEventListener("input",calc);
