@@ -286,5 +286,17 @@ $("clear").addEventListener("click",()=>{
 
 render();
 </script>
+ </script>
+
+<script>
+if ("serviceWorker" in navigator) {
+  navigator.serviceWorker.register("./sw.js")
+    .then(() => console.log("Service Worker käytössä"))
+    .catch(error => console.error("Service Worker -virhe:", error));
+}
+</script>
+
+</body>
+</html>
 </body>
 </html>
